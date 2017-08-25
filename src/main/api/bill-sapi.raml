@@ -1,0 +1,194 @@
+#%RAML 0.8
+title: bill
+version: 1
+
+/oauth:
+  /accessToken:
+    post:
+      description: POST method to return access token from resource server.
+      responses: 
+        200:
+          body: 
+            application/json:
+        500:
+          body: 
+            application/json:
+
+/bill:
+  /{subscriberAccountNumber}/{billerAccountNumber}/add:
+    post:
+      description: Add outstanding balance for a specific account number subscriber.
+      queryParameters: 
+        amount:
+          type: number
+      responses: 
+        200:
+          body: 
+            application/json:
+        404:
+          body: 
+            application/json:
+        500:
+          body: 
+            application/json:
+  /{subscriberAccountNumber}/{billerAccountNumber}:
+    get:
+      description: Subscriber inquiry.
+      responses: 
+        200:
+          body: 
+            application/json:
+        404:
+          body: 
+            application/json:
+        500:
+          body: 
+            application/json:
+/biller:
+  get:
+    description: Get all billers.
+    responses: 
+      200:
+        body: 
+          application/json:
+      204:
+        body: 
+          application/json:
+      500:
+        body: 
+          application/json:
+  post:
+    description: Save new biller.
+    responses: 
+      201:
+        body: 
+          application/json:
+            example: |
+              {
+                "id": "59926c5b9bdc6231fce0c1b6",
+                "billerName": "waterCo",
+                "accountNumber": "123456",
+                "wallet": 1
+              }
+      409:
+        body: 
+          application/json:
+      500:
+        body: 
+          application/json:
+  /{id}:
+    get:
+      description: Get specific biller.
+      body: 
+        application/json:
+      responses: 
+        200:
+          body: 
+            application/json:
+        404:
+          body: 
+            application/json:
+        500:
+          body: 
+            application/json:
+    put:
+      description: Update biller.
+      responses: 
+        201:
+          body: 
+            application/json:
+              example: |
+                {
+                  "id": "59926c5b9bdc6231fce0c1b6",
+                  "billerName": "waterCo",
+                  "accountNumber": "123456",
+                  "wallet": 1
+                }
+        409:
+          body: 
+            application/json:
+        500:
+          body: 
+            application/json:
+/subscriber:
+  get:
+    description: Get all subscribers
+    responses: 
+      200:
+        body: 
+          application/json:
+      204:
+        body: 
+          application/json:
+      500:
+        body: 
+          application/json:
+  post:
+    description: Save new subscriber
+    responses: 
+      201:
+        body: 
+          application/json:
+            example: |
+              {
+                "id": "59926c5b9bdc6231fce0c1b6",
+                "subscriberName": "waterCo",
+                "msisdn":"9274302949",
+                "accountNumber": "123456",
+                "wallet": 1
+              }
+      409:
+        body: 
+          application/json:
+      500:
+        body: 
+          application/json:
+  /{id}:
+    get:
+      description: Get subscriber details.
+      responses: 
+        200:
+          body: 
+            application/json:
+        404:
+          body: 
+            application/json:
+        500:
+          body: 
+            application/json:
+    put:
+      description: Update subscriber details.
+      responses: 
+        200:
+          body: 
+            application/json:
+              example: |
+                {
+                  "id": "59926c5b9bdc6231fce0c1b6",
+                  "subscriberName": "waterCo",
+                  "msisdn":"9274302949",
+                  "accountNumber": "123456",
+                  "wallet": 1
+                }
+        404:
+          body: 
+            application/json:
+        500:
+          body: 
+            application/json:
+/payment/{subscriberAccountNumber}/{billerAccountNumber}:
+  post:
+    description: Payment adapter for service.
+    queryParameters: 
+      amount:
+        type: number
+    responses: 
+      200:
+        body: 
+          application/json:
+      404:
+        body: 
+          application/json:
+      500:
+        body: 
+          application/json:

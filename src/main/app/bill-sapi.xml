@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/apikit" xmlns:context="http://www.springframework.org/schema/context" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/apikit http://www.mulesoft.org/schema/mule/apikit/current/mule-apikit.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd">
+    <spring:beans>
+        <context:property-placeholder location="classpath:endpoint.properties" order="1" />
+    </spring:beans>
+    <http:listener-config name="bill-sapi-httpListenerConfig" host="${config.host}" port="${config.port}" doc:name="HTTP Listener Configuration" />
+    <apikit:config name="bill-sapi-config" raml="bill-sapi.raml" consoleEnabled="false" doc:name="Router" keepRamlBaseUri="false" />
+    <http:request-config name="BillMicroservice" host="${config.microservice.host}" port="${config.microservice.port}" basePath="${config.microservice.path}" doc:name="HTTP Request Configuration" />
+    <flow name="bill-sapi-main">
+        <http:listener config-ref="bill-sapi-httpListenerConfig" path="${config.path}" doc:name="HTTP" />
+        <copy-properties propertyName="*"   doc:name="Copy Properties"/>
+        <apikit:router config-ref="bill-sapi-config" doc:name="APIkit Router" />
+        <exception-strategy ref="BillExceptions" doc:name="Reference Exception Strategy" />
+    </flow>
+    <flow name="bill-sapi-console">
+        <http:listener config-ref="bill-sapi-httpListenerConfig" path="/console/*" doc:name="HTTP" />
+        <apikit:console config-ref="bill-sapi-config" doc:name="APIkit Console" />
+    </flow>
+    <flow name="post:/oauth/accessToken:bill-sapi-config">
+        <http:request config-ref="BillMicroservice" path="${config.microservice.path.oauth}" method="POST" doc:name="HTTP">
+            <http:request-builder>
+                <http:query-param paramName="email" value="#[message.inboundProperties.'http.query.params'.email]" />
+            </http:request-builder>
+        </http:request>
+        <set-property propertyName="Content-Type" value="application/json" mimeType="application/json" doc:name="Property" />
+    </flow>
+    <flow name="put:/biller/{id}:bill-sapi-config">
+        <set-payload value="{&#xA;  &quot;id&quot;: &quot;59926c5b9bdc6231fce0c1b6&quot;,&#xA;  &quot;billerName&quot;: &quot;waterCo&quot;,&#xA;  &quot;accountNumber&quot;: &quot;123456&quot;,&#xA;  &quot;wallet&quot;: 1&#xA;}" doc:name="Set Payload" />
+    </flow>
+    <flow name="put:/subscriber/{id}:bill-sapi-config">
+        <set-payload value="{&#xA;  &quot;id&quot;: &quot;59926c5b9bdc6231fce0c1b6&quot;,&#xA;  &quot;subscriberName&quot;: &quot;waterCo&quot;,&#xA;  &quot;msisdn&quot;:&quot;9274302949&quot;,&#xA;  &quot;accountNumber&quot;: &quot;123456&quot;,&#xA;  &quot;wallet&quot;: 1&#xA;}" doc:name="Set Payload" />
+    </flow>
+    <flow name="get:/subscriber:bill-sapi-config">
+        <set-payload value="#[NullPayload.getInstance()]" doc:name="Set Payload" />
+    </flow>
+    <flow name="get:/biller:bill-sapi-config">
+        <http:request config-ref="BillMicroservice" path="${config.microservice.path.biller}" method="GET" doc:name="Get Billers" />
+        <set-property propertyName="Content-Type" doc:name="Property" mimeType="application/json" value="application/json"/>
+    </flow>
+    <flow name="get:/biller/{id}:bill-sapi-config">
+        <set-payload value="#[NullPayload.getInstance()]" doc:name="Set Payload" />
+    </flow>
+    <flow name="get:/subscriber/{id}:bill-sapi-config">
+        <set-payload value="#[NullPayload.getInstance()]" doc:name="Set Payload" />
+    </flow>
+    <flow name="post:/biller:bill-sapi-config">
+        <http:request config-ref="BillMicroservice" path="${config.microservice.path.biller}" method="POST" doc:name="Add Billers"/>
+        <copy-properties propertyName="*" doc:name="Property"/>
+    </flow>
+    <flow name="post:/subscriber:bill-sapi-config">
+        <http:request config-ref="BillMicroservice" path="${config.microservice.path.subscriber}" method="POST" doc:name="Add Subscriber"/>
+        <copy-properties propertyName="*" doc:name="Property"/>
+    </flow>
+    <flow name="get:/bill/{subscriberAccountNumber}/{billerAccountNumber}:bill-sapi-config">
+        <copy-properties propertyName="*" doc:name="Copy Headers" />
+        <http:request config-ref="BillMicroservice" path="${config.microservice.path.bill.pv.sn}" method="GET" doc:name="Subscriber Inquiry">
+            <http:request-builder>
+                <http:uri-param paramName="subscriberAccountNumber" value="#[message.inboundProperties['http.uri.params']['subscriberAccountNumber']]" />
+                <http:uri-param paramName="billerAccountNumber" value="#[message.inboundProperties['http.uri.params']['billerAccountNumber']]" />
+            </http:request-builder>
+        </http:request>
+        <set-property propertyName="Content-Type" value="application/json" mimeType="application/json" doc:name="Property" />
+    </flow>
+    <flow name="post:/payment/{subscriberAccountNumber}/{billerAccountNumber}:bill-sapi-config">
+        <flow-ref name="SetVariables" doc:name="SetVariables" />
+        <flow-ref name="settlePayment" doc:name="settlePayment" />
+        <choice doc:name="Choice">
+            <when expression="#[payload.status_code] == 200">
+                <set-variable variableName="isSuccess" value="true" doc:name="Set Success" />
+            </when>
+            <otherwise>
+                <set-variable variableName="isSuccess" value="false" doc:name="Set Failed" />
+            </otherwise>
+        </choice>
+        <http:request config-ref="BillMicroservice" path="${config.microservice.path.receipt.save}" method="POST" doc:name="Save Transaction">
+            <http:request-builder>
+                <http:query-param paramName="amount" value="#[flowVars.amount]" />
+                <http:query-param paramName="isSuccess" value="#[flowVars.isSuccess]" />
+                <http:uri-param paramName="subscriberAccountNumber" value="#[flowVars.subscriberAccountNumber]" />
+                <http:uri-param paramName="billerAccountNumber" value="#[flowVars.billerAccountNumber]" />
+            </http:request-builder>
+        </http:request>
+        <set-property propertyName="Content-Type" value="application/json" mimeType="application/json" doc:name="Property" />
+    </flow>
+    <flow name="post:/bill/{subscriberAccountNumber}/{billerAccountNumber}/add:bill-sapi-config">
+        <http:request config-ref="BillMicroservice" path="${config.microservice.path.bill.pv.sn.add}" method="POST" doc:name="HTTP">
+            <http:request-builder>
+                <http:query-param paramName="amount" value="#[message.inboundProperties.'http.query.params'.amount]"/>
+                <http:uri-param paramName="subscriberAccountNumber" value="#[message.inboundProperties['http.uri.params']['subscriberAccountNumber']]"/>
+                <http:uri-param paramName="billerAccountNumber" value="#[message.inboundProperties['http.uri.params']['billerAccountNumber']]"/>
+            </http:request-builder>
+        </http:request>
+        <copy-properties propertyName="*" doc:name="Copy Property"/>
+    </flow>
+    <sub-flow name="SetVariables">
+        <set-variable variableName="subscriberAccountNumber" value="#[message.inboundProperties['http.uri.params']['subscriberAccountNumber']]" doc:name="Set Subscriber Account Number" />
+        <set-variable variableName="billerAccountNumber" value="#[message.inboundProperties['http.uri.params']['billerAccountNumber']]" doc:name="Set Biller Account Number" />
+        <set-variable variableName="amount" value="#[message.inboundProperties.'http.query.params'.amount]" doc:name="Set Amount" />
+    </sub-flow>
+    <sub-flow name="settlePayment">
+        <http:request config-ref="BillMicroservice" path="${config.microservice.path.bill.pv.sn.settle}" method="POST" doc:name="Settlement">
+            <http:request-builder>
+                <http:query-param paramName="amount" value="#[flowVars.amount]" />
+                <http:uri-param paramName="subscriberAccountNumber" value="#[flowVars.subscriberAccountNumber]" />
+                <http:uri-param paramName="billerAccountNumber" value="#[flowVars.billerAccountNumber]" />
+            </http:request-builder>
+        </http:request>
+        <json:json-to-object-transformer returnClass="java.util.HashMap" ignoreBadInput="true" doc:name="JSON to Object" />
+        <logger message="#[payload.status_code]" level="INFO" doc:name="Logger" />
+    </sub-flow>
+    <apikit:mapping-exception-strategy name="bill-sapi-apiKitGlobalExceptionMapping">
+        <apikit:mapping statusCode="404">
+            <apikit:exception value="org.mule.module.apikit.exception.NotFoundException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property" />
+            <set-payload value="{ &quot;message&quot;: &quot;Resource not found&quot; }" doc:name="Set Payload" />
+        </apikit:mapping>
+        <apikit:mapping statusCode="405">
+            <apikit:exception value="org.mule.module.apikit.exception.MethodNotAllowedException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property" />
+            <set-payload value="{ &quot;message&quot;: &quot;Method not allowed&quot; }" doc:name="Set Payload" />
+        </apikit:mapping>
+        <apikit:mapping statusCode="415">
+            <apikit:exception value="org.mule.module.apikit.exception.UnsupportedMediaTypeException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property" />
+            <set-payload value="{ &quot;message&quot;: &quot;Unsupported media type&quot; }" doc:name="Set Payload" />
+        </apikit:mapping>
+        <apikit:mapping statusCode="406">
+            <apikit:exception value="org.mule.module.apikit.exception.NotAcceptableException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property" />
+            <set-payload value="{ &quot;message&quot;: &quot;Not acceptable&quot; }" doc:name="Set Payload" />
+        </apikit:mapping>
+        <apikit:mapping statusCode="400">
+            <apikit:exception value="org.mule.module.apikit.exception.BadRequestException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property" />
+            <set-payload value="{ &quot;message&quot;: &quot;Bad request&quot; }" doc:name="Set Payload" />
+        </apikit:mapping>
+    </apikit:mapping-exception-strategy>
+    <choice-exception-strategy name="BillExceptions">
+        <catch-exception-strategy when="#[message.inboundProperties.'http.status' == 404]" doc:name="404">
+            <copy-properties propertyName="*" doc:name="Copy Properties" />
+            <set-payload value="{  &quot;status_code&quot;: &quot;404&quot;,  &quot;status_message&quot;: &quot;Not found&quot; }" doc:name="Set Payload" />
+        </catch-exception-strategy>
+        <catch-exception-strategy when="#[message.inboundProperties.'http.status' == 500]" doc:name="500">
+            <copy-properties propertyName="*" doc:name="Copy Properties" />
+            <set-payload value="{  &quot;status_code&quot;: &quot;500&quot;,  &quot;status_message&quot;: &quot;Internal Server Error&quot; }" doc:name="Set Payload" />
+        </catch-exception-strategy>
+    </choice-exception-strategy>
+</mule>
